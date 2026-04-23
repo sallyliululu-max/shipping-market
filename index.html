@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>航运行情收集器</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #040d1a;
+    --surface: #071428;
+    --card: #0a1e35;
+    --border: #0e2d50;
+    --accent: #00c8ff;
+    --accent2: #00ff9d;
+    --accent3: #ff6b35;
+    --text: #cde4f5;
+    --text-muted: #5a7a96;
+    --up: #00e87a;
+    --down: #ff4d6a;
+    --flat: #ffc107;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    background: rgba(4,13,26,0.95);
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .header-inner {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text {
+    font-size: 18px; font-weight: 700; letter-spacing: 0.05em;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .logo-sub { font-size: 11px; color: var(--text-muted); letter-spacing: 0.1em; }
+  .date-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 6px 14px; border-radius: 4px;
+    background: var(--surface);
+  }
+
+  /* Main layout */
+  main { padding: 32px 0; }
+
+  /* Upload Zone */
+  .upload-section {
+    margin-bottom: 36px;
+  }
+  .section-title {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.15em;
+    color: var(--text-muted); text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .upload-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(0,200,255,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(0,200,255,0.04);
+  }
+  .upload-icon { font-size: 40px; margin-bottom: 12px; }
+  .upload-title { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+  .upload-hint { font-size: 12px; color: var(--text-muted); }
+  .upload-tags {
+    display: flex; justify-content: center; gap: 8px; margin-top: 16px;
+  }
+  .tag {
+    font-size: 10px; padding: 3px 10px; border-radius: 20px;
+    border: 1px solid var(--border); color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  #fileInput { display: none; }
+
+  /* Parse Button */
+  .parse-btn {
+    width: 100%; margin-top: 16px;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--accent) 0%, #0070ff 100%);
+    border: none; border-radius: 8px;
+    color: #fff; font-size: 14px; font-weight: 600;
+    cursor: pointer; letter-spacing: 0.05em;
+    transition: all 0.3s;
+    font-family: 'Noto Sans SC', sans-serif;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .parse-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(0,200,255,0.3); }
+  .parse-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Status */
+  .status-bar {
+    margin-top: 12px; padding: 10px 16px;
+    border-radius: 6px; font-size: 12px;
+    display: none;
+  }
+  .status-bar.loading {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(0,200,255,0.08); border: 1px solid rgba(0,200,255,0.2);
+    color: var(--accent);
+  }
+  .status-bar.success {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(0,232,122,0.08); border: 1px solid rgba(0,232,122,0.2);
+    color: var(--up);
+  }
+  .status-bar.error {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,77,106,0.08); border: 1px solid rgba(255,77,106,0.2);
+    color: var(--down);
+  }
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid rgba(0,200,255,0.3);
+    border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Dashboard */
+  .dashboard { display: none; }
+  .dashboard.visible { display: block; animation: fadeIn 0.5s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Index Cards */
+  .index-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 900px) { .index-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 600px) { .index-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .index-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s;
+  }
+  .index-card:hover { transform: translateY(-2px); }
+  .index-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .index-card.up::before { background: var(--up); }
+  .index-card.down::before { background: var(--down); }
+  .index-card.flat::before { background: var(--flat); }
+
+  .idx-name { font-size: 10px; color: var(--text-muted); letter-spacing: 0.1em; margin-bottom: 8px; }
+  .idx-abbr { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .idx-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 26px; font-weight: 600;
+    line-height: 1.1; margin-bottom: 6px;
+  }
+  .idx-change {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; display: flex; align-items: center; gap: 4px;
+  }
+  .idx-change.up { color: var(--up); }
+  .idx-change.down { color: var(--down); }
+  .idx-change.flat { color: var(--flat); }
+
+  /* Charts Row */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 800px) { .charts-row { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .chart-title {
+    font-size: 12px; font-weight: 500; letter-spacing: 0.08em;
+    color: var(--text-muted); margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .chart-wrapper { position: relative; height: 200px; }
+
+  /* TC Rate Cards */
+  .tc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 900px) { .tc-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .tc-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .tc-label { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; letter-spacing: 0.08em; }
+  .tc-type { font-size: 12px; font-weight: 500; margin-bottom: 10px; }
+  .tc-rate {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px; font-weight: 600; color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .tc-change { font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Fixtures Table */
+  .full-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 28px;
+  }
+  .fixtures-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 12px;
+  }
+  .fixtures-table th {
+    text-align: left; padding: 8px 12px;
+    color: var(--text-muted); font-weight: 500;
+    letter-spacing: 0.08em; font-size: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .fixtures-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(14,45,80,0.5);
+    vertical-align: middle;
+  }
+  .fixtures-table tr:last-child td { border-bottom: none; }
+  .fixtures-table tr:hover td { background: rgba(0,200,255,0.03); }
+  .ship-name { font-weight: 500; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .rate-cell { font-family: 'JetBrains Mono', monospace; color: var(--accent2); font-weight: 600; }
+  .type-badge {
+    font-size: 9px; padding: 2px 8px; border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .badge-tc { background: rgba(0,200,255,0.15); color: var(--accent); border: 1px solid rgba(0,200,255,0.3); }
+  .badge-voyage { background: rgba(0,255,157,0.12); color: var(--accent2); border: 1px solid rgba(0,255,157,0.3); }
+  .badge-period { background: rgba(255,107,53,0.12); color: var(--accent3); border: 1px solid rgba(255,107,53,0.3); }
+
+  /* Market Analysis */
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 800px) { .analysis-grid { grid-template-columns: 1fr; } }
+
+  .analysis-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .sector-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  }
+  .sector-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .sector-name { font-size: 14px; font-weight: 600; }
+  .sector-sentiment {
+    margin-left: auto; font-size: 10px; padding: 3px 10px;
+    border-radius: 20px; font-weight: 500;
+  }
+  .sentiment-stable { background: rgba(255,193,7,0.15); color: var(--flat); border: 1px solid rgba(255,193,7,0.3); }
+  .sentiment-up { background: rgba(0,232,122,0.12); color: var(--up); border: 1px solid rgba(0,232,122,0.3); }
+  .sentiment-down { background: rgba(255,77,106,0.12); color: var(--down); border: 1px solid rgba(255,77,106,0.3); }
+  .analysis-text { font-size: 12px; line-height: 1.8; color: #8aafc8; }
+  .highlight { color: var(--text); font-weight: 500; }
+
+  /* Voyage section */
+  .voyage-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .voyage-item {
+    background: rgba(7,20,40,0.8);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+  .voyage-route { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--text); }
+  .voyage-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+  .voyage-rate { font-size: 14px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--accent2); text-align: right; }
+  .voyage-charterer { font-size: 10px; color: var(--text-muted); text-align: right; }
+
+  /* Raw text panel */
+  .raw-toggle {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--text-muted);
+    cursor: pointer; user-select: none;
+    padding: 8px 0;
+  }
+  .raw-toggle:hover { color: var(--text); }
+  .raw-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 11px; line-height: 1.8;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    font-family: 'JetBrains Mono', monospace;
+    max-height: 300px; overflow-y: auto;
+    display: none;
+  }
+  .raw-content.open { display: block; }
+
+  /* Uploaded files list */
+  .file-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .file-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 14px;
+    font-size: 12px;
+  }
+  .file-icon { font-size: 16px; }
+  .file-name { flex: 1; font-family: 'JetBrains Mono', monospace; }
+  .file-size { color: var(--text-muted); font-size: 10px; }
+  .file-status { font-size: 10px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">⚓</div>
+        <div>
+          <div class="logo-text">航运行情收集器</div>
+          <div class="logo-sub">Shipping Market Intelligence</div>
+        </div>
+      </div>
+      <div class="date-badge" id="currentDate">--</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+
+    <!-- Upload Section -->
+    <div class="upload-section">
+      <div class="section-title">上传行情文件</div>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📂</div>
+        <div class="upload-title">拖拽或点击上传文件</div>
+        <div class="upload-hint">支持每日行情报告，可多文件同时上传</div>
+        <div class="upload-tags">
+          <span class="tag">PDF</span>
+          <span class="tag">XLSX</span>
+          <span class="tag">TXT</span>
+          <span class="tag">CSV</span>
+          <span class="tag">文字粘贴</span>
+        </div>
+      </div>
+      <input type="file" id="fileInput" multiple accept=".pdf,.xlsx,.xls,.txt,.csv,.doc,.docx">
+      <div class="file-list" id="fileList"></div>
+
+      <!-- Text paste area -->
+      <div style="margin-top:12px;">
+        <textarea id="pasteArea" placeholder="也可直接粘贴文字内容（市场报告、行情播报等）..."
+          style="width:100%;height:90px;background:var(--surface);border:1px solid var(--border);border-radius:8px;
+          padding:12px;color:var(--text);font-size:12px;font-family:'Noto Sans SC',sans-serif;resize:vertical;
+          outline:none;line-height:1.7;"></textarea>
+      </div>
+
+      <button class="parse-btn" id="parseBtn" onclick="parseAllData()">
+        <span>🤖</span>
+        <span>AI 解析 & 生成行情仪表盘</span>
+      </button>
+      <div class="status-bar" id="statusBar"></div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="dashboard" id="dashboard">
+
+      <!-- Date Info -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div style="font-size:13px;color:var(--text-muted);">
+          行情日期：<span id="reportDate" style="color:var(--text);font-weight:500;"></span>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">
+          数据来源：Baltic Exchange
+        </div>
+      </div>
+
+      <!-- BDI + Indices -->
+      <div class="section-title">波罗的海指数</div>
+      <div class="index-grid" id="indexGrid"></div>
+
+      <!-- Charts -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span>主要指数对比</span>
+            <span style="font-size:10px;font-family:'JetBrains Mono',monospace;">BCI / BPI / BSI / BHSI</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="indexBarChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">
+            <span>TC日租金水平 (USD/天)</span>
+            <span style="font-size:10px;font-family:'JetBrains Mono',monospace;">各船型均值</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="tcChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- TC Rates -->
+      <div class="section-title">期租均价</div>
+      <div class="tc-grid" id="tcGrid"></div>
+
+      <!-- Fixture Highlights -->
+      <div class="section-title">今日成交亮点</div>
+      <div class="full-card">
+        <table class="fixtures-table">
+          <thead>
+            <tr>
+              <th>类型</th>
+              <th>船名</th>
+              <th>载重吨 / 建造</th>
+              <th>交船港</th>
+              <th>航线 / 目的地</th>
+              <th>货种</th>
+              <th>租金/运费</th>
+              <th>租家</th>
+            </tr>
+          </thead>
+          <tbody id="fixtureBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Voyage Rates -->
+      <div class="section-title">航次运费</div>
+      <div class="full-card">
+        <div class="voyage-list" id="voyageList"></div>
+      </div>
+
+      <!-- Sector Analysis -->
+      <div class="section-title">船型市场分析</div>
+      <div class="analysis-grid" id="analysisGrid"></div>
+
+      <!-- Raw Content -->
+      <div class="section-title" style="cursor:pointer;" onclick="toggleRaw()">
+        原始内容
+        <span id="rawToggleIcon" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text-muted);">[展开]</span>
+      </div>
+      <div class="raw-content" id="rawContent"></div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+// State
+let uploadedFiles = [];
+let extractedTexts = [];
+let indexBarChart = null;
+let tcChart = null;
+
+// Date
+document.getElementById('currentDate').textContent = new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'});
+
+// Drag & Drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag-over');
+  handleFiles([...e.dataTransfer.files]);
+});
+document.getElementById('fileInput').addEventListener('change', e => handleFiles([...e.target.files]));
+
+function handleFiles(files) {
+  files.forEach(f => {
+    if (!uploadedFiles.find(x => x.name === f.name && x.size === f.size)) {
+      uploadedFiles.push(f);
+      renderFileItem(f);
+    }
+  });
+}
+
+function renderFileItem(f) {
+  const ext = f.name.split('.').pop().toLowerCase();
+  const icons = {pdf:'📄',xlsx:'📊',xls:'📊',txt:'📝',csv:'📋',doc:'📃',docx:'📃'};
+  const icon = icons[ext] || '📁';
+  const size = f.size > 1024*1024 ? (f.size/1024/1024).toFixed(1)+'MB' : (f.size/1024).toFixed(0)+'KB';
+  const item = document.createElement('div');
+  item.className = 'file-item';
+  item.id = 'file_'+f.name.replace(/[^a-z0-9]/gi,'_');
+  item.innerHTML = `<span class="file-icon">${icon}</span>
+    <span class="file-name">${f.name}</span>
+    <span class="file-size">${size}</span>
+    <span class="file-status" style="color:var(--text-muted);">待解析</span>`;
+  document.getElementById('fileList').appendChild(item);
+}
+
+// Extract text from files
+async function extractText(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'txt' || ext === 'csv') {
+    return new Promise(res => {
+      const r = new FileReader();
+      r.onload = e => res(e.target.result);
+      r.readAsText(file, 'UTF-8');
+    });
+  }
+  if (ext === 'xlsx' || ext === 'xls') {
+    return new Promise(res => {
+      const r = new FileReader();
+      r.onload = e => {
+        try {
+          const wb = XLSX.read(e.target.result, {type:'binary'});
+          let text = '';
+          wb.SheetNames.forEach(name => {
+            const ws = wb.Sheets[name];
+            text += `[Sheet: ${name}]\n` + XLSX.utils.sheet_to_csv(ws) + '\n\n';
+          });
+          res(text);
+        } catch(err) { res(''); }
+      };
+      r.readAsBinaryString(file);
+    });
+  }
+  if (ext === 'pdf') {
+    // Return placeholder - will be handled as binary via base64
+    return new Promise(res => {
+      const r = new FileReader();
+      r.onload = e => res('[PDF_BASE64:' + e.target.result.split(',')[1] + ']');
+      r.readAsDataURL(file);
+    });
+  }
+  return '';
+}
+
+function setStatus(type, msg) {
+  const bar = document.getElementById('statusBar');
+  bar.className = 'status-bar ' + type;
+  if (type === 'loading') bar.innerHTML = `<div class="spinner"></div><span>${msg}</span>`;
+  else if (type === 'success') bar.innerHTML = `<span>✅</span><span>${msg}</span>`;
+  else bar.innerHTML = `<span>❌</span><span>${msg}</span>`;
+}
+
+async function parseAllData() {
+  const pasteText = document.getElementById('pasteArea').value.trim();
+  if (uploadedFiles.length === 0 && !pasteText) {
+    setStatus('error', '请先上传文件或粘贴文字内容');
+    return;
+  }
+
+  const btn = document.getElementById('parseBtn');
+  btn.disabled = true;
+  setStatus('loading', '正在读取文件内容...');
+
+  // Extract all texts
+  let allText = pasteText ? pasteText + '\n\n' : '';
+  const pdfFiles = [];
+
+  for (const f of uploadedFiles) {
+    const ext = f.name.split('.').pop().toLowerCase();
+    setStatus('loading', `正在处理: ${f.name}`);
+    const text = await extractText(f);
+    if (ext === 'pdf') {
+      pdfFiles.push({name: f.name, base64: text.replace('[PDF_BASE64:','').replace(']','')});
+    } else {
+      allText += `[文件: ${f.name}]\n${text}\n\n`;
+    }
+    const item = document.getElementById('file_'+f.name.replace(/[^a-z0-9]/gi,'_'));
+    if (item) item.querySelector('.file-status').textContent = '✓ 已读取';
+  }
+
+  setStatus('loading', '正在调用 AI 解析行情数据...');
+
+  try {
+    let parsedData;
+    if (pdfFiles.length > 0) {
+      parsedData = await callAPIWithPDF(pdfFiles, allText);
+    } else {
+      parsedData = await callAPITextOnly(allText);
+    }
+
+    document.getElementById('rawContent').textContent = allText.substring(0, 3000);
+    renderDashboard(parsedData);
+    setStatus('success', 'AI 解析完成，行情仪表盘已生成');
+    btn.disabled = false;
+  } catch(e) {
+    console.error(e);
+    setStatus('error', 'AI 解析出错：' + e.message);
+    btn.disabled = false;
+  }
+}
+
+async function callAPIWithPDF(pdfFiles, extraText) {
+  const content = [];
+  for (const pdf of pdfFiles) {
+    content.push({
+      type: 'document',
+      source: { type: 'base64', media_type: 'application/pdf', data: pdf.base64 }
+    });
+  }
+  if (extraText) {
+    content.push({ type: 'text', text: extraText });
+  }
+  content.push({ type: 'text', text: PARSE_PROMPT });
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content }]
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  const text = data.content.map(b => b.text || '').join('');
+  return parseJSON(text);
+}
+
+async function callAPITextOnly(text) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: text + '\n\n' + PARSE_PROMPT }]
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  const txt = data.content.map(b => b.text || '').join('');
+  return parseJSON(txt);
+}
+
+const PARSE_PROMPT = `请从以上航运行情文件/文字中提取所有行情数据，严格按以下JSON格式返回，只返回JSON，不要任何其他文字：
+
+{
+  "date": "YYYY-MM-DD格式的行情日期",
+  "indices": [
+    {"name": "波罗的海综合指数", "abbr": "BDI", "value": 数值, "change": 变化值, "direction": "up/down/flat"},
+    {"name": "海岬型指数", "abbr": "BCI", "value": 数值, "change": 变化值, "direction": "up/down/flat"},
+    {"name": "巴拿马型指数", "abbr": "BPI", "value": 数值, "change": 变化值, "direction": "up/down/flat"},
+    {"name": "超灵便型指数", "abbr": "BSI", "value": 数值, "change": 变化值, "direction": "up/down/flat"},
+    {"name": "灵便型指数", "abbr": "BHSI", "value": 数值, "change": 变化值, "direction": "up/down/flat"}
+  ],
+  "tc_rates": [
+    {"type": "海岬型", "abbr": "C5TC", "rate": 数值, "change": 变化值, "direction": "up/down/flat"},
+    {"type": "巴拿马型", "abbr": "P5TC", "rate": 数值, "change": 变化值, "direction": "up/down/flat"},
+    {"type": "超灵便型", "abbr": "S11TC", "rate": 数值, "change": 变化值, "direction": "up/down/flat"},
+    {"type": "灵便型", "abbr": "HS7TC", "rate": 数值, "change": 变化值, "direction": "up/down/flat"}
+  ],
+  "fixtures": [
+    {
+      "type": "TC期租/航次/期间",
+      "ship": "船名",
+      "dwt": 载重吨数值,
+      "built": 建造年份,
+      "delivery": "交船港",
+      "route": "航线描述",
+      "cargo": "货种",
+      "rate": "租金或运费字符串",
+      "charterer": "租家"
+    }
+  ],
+  "voyages": [
+    {
+      "route": "航线，如Tubarao-Qingdao",
+      "cargo": "货种",
+      "size": "船型大小",
+      "rate": "运费字符串",
+      "laycan": "装货期",
+      "charterer": "租家"
+    }
+  ],
+  "sector_analysis": [
+    {
+      "sector": "海岬型",
+      "color": "#00c8ff",
+      "sentiment": "stable/up/down",
+      "sentiment_cn": "平稳/向好/疲软",
+      "summary": "100字内的中文市场简评，包含关键区域行情、成交情况、影响因素"
+    },
+    {
+      "sector": "巴拿马型",
+      "color": "#00ff9d",
+      "sentiment": "...",
+      "sentiment_cn": "...",
+      "summary": "..."
+    },
+    {
+      "sector": "超灵便/灵便型",
+      "color": "#ff6b35",
+      "sentiment": "...",
+      "sentiment_cn": "...",
+      "summary": "..."
+    }
+  ]
+}`;
+
+function parseJSON(text) {
+  const clean = text.replace(/```json|```/g, '').trim();
+  const start = clean.indexOf('{');
+  const end = clean.lastIndexOf('}');
+  if (start < 0 || end < 0) throw new Error('无法解析JSON');
+  return JSON.parse(clean.substring(start, end+1));
+}
+
+function renderDashboard(d) {
+  document.getElementById('reportDate').textContent = d.date || '今日';
+
+  // Indices
+  const grid = document.getElementById('indexGrid');
+  grid.innerHTML = '';
+  (d.indices || []).forEach(idx => {
+    const dir = idx.direction;
+    const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '—';
+    const signClass = dir === 'up' ? 'up' : dir === 'down' ? 'down' : 'flat';
+    const changeStr = (idx.change > 0 ? '+' : '') + idx.change;
+    grid.innerHTML += `
+      <div class="index-card ${signClass}">
+        <div class="idx-name">${idx.name}</div>
+        <div class="idx-value">${(idx.value||0).toLocaleString()}</div>
+        <div class="idx-change ${signClass}">${arrow} ${changeStr}</div>
+        <div class="idx-abbr">${idx.abbr}</div>
+      </div>`;
+  });
+
+  // Bar chart - indices
+  const indexData = (d.indices || []).filter(i => i.abbr !== 'BDI');
+  if (indexBarChart) indexBarChart.destroy();
+  const ctx1 = document.getElementById('indexBarChart').getContext('2d');
+  indexBarChart = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: indexData.map(i => i.abbr),
+      datasets: [{
+        data: indexData.map(i => i.value),
+        backgroundColor: ['rgba(0,200,255,0.7)','rgba(0,255,157,0.7)','rgba(255,107,53,0.7)','rgba(255,193,7,0.7)'],
+        borderColor: ['#00c8ff','#00ff9d','#ff6b35','#ffc107'],
+        borderWidth: 1, borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(14,45,80,0.5)' }, ticks: { color: '#5a7a96', font: {family:'JetBrains Mono',size:10} } },
+        y: { grid: { color: 'rgba(14,45,80,0.5)' }, ticks: { color: '#5a7a96', font: {family:'JetBrains Mono',size:10} } }
+      }
+    }
+  });
+
+  // TC chart
+  const tcData = d.tc_rates || [];
+  if (tcChart) tcChart.destroy();
+  const ctx2 = document.getElementById('tcChart').getContext('2d');
+  tcChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: tcData.map(t => t.type),
+      datasets: [{
+        data: tcData.map(t => t.rate),
+        backgroundColor: tcData.map((t,i) => ['rgba(0,200,255,0.7)','rgba(0,255,157,0.7)','rgba(255,107,53,0.7)','rgba(255,193,7,0.7)'][i%4]),
+        borderWidth: 1, borderRadius: 4,
+        borderColor: tcData.map((t,i) => ['#00c8ff','#00ff9d','#ff6b35','#ffc107'][i%4])
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(14,45,80,0.5)' }, ticks: { color: '#5a7a96', font: {family:'JetBrains Mono',size:10} } },
+        y: {
+          grid: { color: 'rgba(14,45,80,0.5)' },
+          ticks: { color: '#5a7a96', font: {family:'JetBrains Mono',size:10},
+            callback: v => '$' + (v/1000).toFixed(0) + 'k' }
+        }
+      }
+    }
+  });
+
+  // TC cards
+  const tcGrid = document.getElementById('tcGrid');
+  tcGrid.innerHTML = '';
+  tcData.forEach((t,i) => {
+    const colors = ['#00c8ff','#00ff9d','#ff6b35','#ffc107'];
+    const dir = t.direction;
+    const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '—';
+    const changeStr = (t.change > 0 ? '+' : '') + (t.change || 0).toLocaleString();
+    const signClass = dir === 'up' ? 'up' : dir === 'down' ? 'down' : 'flat';
+    tcGrid.innerHTML += `
+      <div class="tc-card">
+        <div class="tc-label">${t.abbr}</div>
+        <div class="tc-type">${t.type} 期租均价</div>
+        <div class="tc-rate" style="color:${colors[i%4]}">$${(t.rate||0).toLocaleString()}</div>
+        <div class="tc-change ${signClass}">${arrow} ${changeStr} USD/天</div>
+      </div>`;
+  });
+
+  // Fixtures
+  const tbody = document.getElementById('fixtureBody');
+  tbody.innerHTML = '';
+  (d.fixtures || []).forEach(f => {
+    const typeBadge = f.type && f.type.includes('航次') ? 'badge-voyage' : f.type && f.type.includes('期间') ? 'badge-period' : 'badge-tc';
+    const typeLabel = f.type || 'TC';
+    tbody.innerHTML += `<tr>
+      <td><span class="type-badge ${typeBadge}">${typeLabel.substring(0,4)}</span></td>
+      <td><span class="ship-name">${f.ship || '-'}</span></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;">${(f.dwt||'').toLocaleString()} / ${f.built||'-'}</td>
+      <td style="font-size:11px;">${f.delivery || '-'}</td>
+      <td style="font-size:11px;color:#8aafc8;">${f.route || '-'}</td>
+      <td style="font-size:11px;">${f.cargo || '-'}</td>
+      <td class="rate-cell">${f.rate || '-'}</td>
+      <td style="font-size:11px;color:var(--text-muted);">${f.charterer || 'cnr'}</td>
+    </tr>`;
+  });
+
+  // Voyages
+  const vList = document.getElementById('voyageList');
+  vList.innerHTML = '';
+  (d.voyages || []).forEach(v => {
+    vList.innerHTML += `<div class="voyage-item">
+      <div>
+        <div class="voyage-route">${v.route || '-'}</div>
+        <div class="voyage-meta">${v.cargo || ''} · ${v.size || ''} · 装货期：${v.laycan || '-'}</div>
+      </div>
+      <div>
+        <div class="voyage-rate">${v.rate || '-'}</div>
+        <div class="voyage-charterer">${v.charterer || '-'}</div>
+      </div>
+    </div>`;
+  });
+
+  // Sector analysis
+  const ag = document.getElementById('analysisGrid');
+  ag.innerHTML = '';
+  (d.sector_analysis || []).forEach(s => {
+    const sentClass = s.sentiment === 'up' ? 'sentiment-up' : s.sentiment === 'down' ? 'sentiment-down' : 'sentiment-stable';
+    ag.innerHTML += `<div class="analysis-card">
+      <div class="sector-header">
+        <div class="sector-dot" style="background:${s.color};box-shadow:0 0 6px ${s.color}66;"></div>
+        <div class="sector-name">${s.sector}</div>
+        <span class="sector-sentiment ${sentClass}">${s.sentiment_cn}</span>
+      </div>
+      <div class="analysis-text">${(s.summary||'').replace(/(\$[\d,]+)/g, '<span class="highlight">$1</span>').replace(/(上涨|走强|向好)/g, '<span style="color:var(--up)">$1</span>').replace(/(下跌|走软|疲软)/g, '<span style="color:var(--down)">$1</span>')}</div>
+    </div>`;
+  });
+
+  document.getElementById('dashboard').classList.add('visible');
+  document.getElementById('dashboard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function toggleRaw() {
+  const raw = document.getElementById('rawContent');
+  const icon = document.getElementById('rawToggleIcon');
+  raw.classList.toggle('open');
+  icon.textContent = raw.classList.contains('open') ? '[收起]' : '[展开]';
+}
+</script>
+</body>
+</html>
