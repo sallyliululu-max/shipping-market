@@ -763,77 +763,84 @@ function loadScript(src) {
   });
 }
 
-const PARSE_PROMPT = `请从以上航运行情文件/文字中提取所有行情数据，严格按以下JSON格式返回，只返回JSON，不要任何其他文字：
+const PARSE_PROMPT = `请从以上航运行情文件中提取数据，返回合法JSON。严格规则：
+1. 只输出JSON，不加任何说明、注释、markdown标记（不要 \`\`\`json）
+2. 所有key和字符串值用双引号，数字不加引号，布尔不加引号
+3. 数组和对象最后一个元素后绝对不能加逗号
+4. summary字段的值里不要出现双引号，改用单引号或省略引号
+5. direction字段只能是字符串 up 或 down 或 flat
 
-{
-  "date": "YYYY-MM-DD格式的行情日期",
-  "indices": [
-    {"name": "波罗的海综合指数", "abbr": "BDI", "value": 数值, "change": 变化值, "direction": "up/down/flat"},
-    {"name": "海岬型指数", "abbr": "BCI", "value": 数值, "change": 变化值, "direction": "up/down/flat"},
-    {"name": "巴拿马型指数", "abbr": "BPI", "value": 数值, "change": 变化值, "direction": "up/down/flat"},
-    {"name": "超灵便型指数", "abbr": "BSI", "value": 数值, "change": 变化值, "direction": "up/down/flat"},
-    {"name": "灵便型指数", "abbr": "BHSI", "value": 数值, "change": 变化值, "direction": "up/down/flat"}
-  ],
-  "tc_rates": [
-    {"type": "海岬型", "abbr": "C5TC", "rate": 数值, "change": 变化值, "direction": "up/down/flat"},
-    {"type": "巴拿马型", "abbr": "P5TC", "rate": 数值, "change": 变化值, "direction": "up/down/flat"},
-    {"type": "超灵便型", "abbr": "S11TC", "rate": 数值, "change": 变化值, "direction": "up/down/flat"},
-    {"type": "灵便型", "abbr": "HS7TC", "rate": 数值, "change": 变化值, "direction": "up/down/flat"}
-  ],
-  "fixtures": [
-    {
-      "type": "TC期租/航次/期间",
-      "ship": "船名",
-      "dwt": 载重吨数值,
-      "built": 建造年份,
-      "delivery": "交船港",
-      "route": "航线描述",
-      "cargo": "货种",
-      "rate": "租金或运费字符串",
-      "charterer": "租家"
-    }
-  ],
-  "voyages": [
-    {
-      "route": "航线，如Tubarao-Qingdao",
-      "cargo": "货种",
-      "size": "船型大小",
-      "rate": "运费字符串",
-      "laycan": "装货期",
-      "charterer": "租家"
-    }
-  ],
-  "sector_analysis": [
-    {
-      "sector": "海岬型",
-      "color": "#00c8ff",
-      "sentiment": "stable/up/down",
-      "sentiment_cn": "平稳/向好/疲软",
-      "summary": "100字内的中文市场简评，包含关键区域行情、成交情况、影响因素"
-    },
-    {
-      "sector": "巴拿马型",
-      "color": "#00ff9d",
-      "sentiment": "...",
-      "sentiment_cn": "...",
-      "summary": "..."
-    },
-    {
-      "sector": "超灵便/灵便型",
-      "color": "#ff6b35",
-      "sentiment": "...",
-      "sentiment_cn": "...",
-      "summary": "..."
-    }
-  ]
-}`;
+请按照下面的JSON结构，用真实数据填写后输出（缺失字段填null）：
+{"date":"行情日期YYYY-MM-DD","indices":[{"name":"波罗的海综合指数","abbr":"BDI","value":0,"change":0,"direction":"flat"},{"name":"海岬型指数","abbr":"BCI","value":0,"change":0,"direction":"flat"},{"name":"巴拿马型指数","abbr":"BPI","value":0,"change":0,"direction":"flat"},{"name":"超灵便型指数","abbr":"BSI","value":0,"change":0,"direction":"flat"},{"name":"灵便型指数","abbr":"BHSI","value":0,"change":0,"direction":"flat"}],"tc_rates":[{"type":"海岬型","abbr":"C5TC","rate":0,"change":0,"direction":"flat"},{"type":"巴拿马型","abbr":"P5TC","rate":0,"change":0,"direction":"flat"},{"type":"超灵便型","abbr":"S11TC","rate":0,"change":0,"direction":"flat"},{"type":"灵便型","abbr":"HS7TC","rate":0,"change":0,"direction":"flat"}],"fixtures":[{"type":"TC期租","ship":"船名","dwt":80000,"built":2018,"delivery":"交船港","route":"航线描述","cargo":"货种","rate":"$20000","charterer":"租家"}],"voyages":[{"route":"装货港-卸货港","cargo":"货种","size":"船型","rate":"$30.00","laycan":"装货期","charterer":"租家"}],"sector_analysis":[{"sector":"海岬型","color":"#00c8ff","sentiment":"stable","sentiment_cn":"平稳","summary":"用100字以内中文描述海岬型市场情况"},{"sector":"巴拿马型","color":"#00ff9d","sentiment":"up","sentiment_cn":"向好","summary":"用100字以内中文描述巴拿马型市场情况"},{"sector":"超灵便/灵便型","color":"#ff6b35","sentiment":"up","sentiment_cn":"向好","summary":"用100字以内中文描述超灵便和灵便型市场情况"}]}`
 
 function parseJSON(text) {
-  const clean = text.replace(/```json|```/g, '').trim();
+  // 1. 去掉 markdown 代码块标记
+  let clean = text.replace(/```json|```/g, '').trim();
+
+  // 2. 截取第一个 { 到最后一个 } 之间的内容
   const start = clean.indexOf('{');
   const end = clean.lastIndexOf('}');
-  if (start < 0 || end < 0) throw new Error('无法解析JSON');
-  return JSON.parse(clean.substring(start, end+1));
+  if (start < 0 || end < 0) throw new Error('AI 未返回有效 JSON，请重试');
+  clean = clean.substring(start, end + 1);
+
+  // 3. 先直接尝试解析
+  try { return JSON.parse(clean); } catch(e) {}
+
+  // 4. 修复常见问题后再试
+  let fixed = clean
+    // 去掉行注释
+    .replace(/\/\/[^\n]*/g, '')
+    // 去掉块注释
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    // 尾随逗号（对象/数组末尾多余的逗号）
+    .replace(/,\s*([\]}])/g, '$1')
+    // 把单引号键/值替换为双引号（简单情况）
+    .replace(/([{,]\s*)'([^']+)'\s*:/g, '$1"$2":')
+    // 控制字符
+    .replace(/[\x00-\x1F\x7F]/g, c => c === '\n' || c === '\r' || c === '\t' ? c : '');
+
+  try { return JSON.parse(fixed); } catch(e) {}
+
+  // 5. 逐字段容错：截断不完整的数组/对象，补全括号
+  try {
+    // 找到最后一个完整的顶级字段，截断后补括号
+    const repaired = repairJSON(fixed);
+    return JSON.parse(repaired);
+  } catch(e) {
+    throw new Error('JSON 修复失败，请检查 API Key 是否正确或重试');
+  }
+}
+
+function repairJSON(str) {
+  // 逐字符扫描，记录括号栈，在最后一个合法位置截断并补全
+  const stack = [];
+  let lastValid = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\' && inString) { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+
+    if (c === '{' || c === '[') stack.push(c);
+    else if (c === '}' || c === ']') {
+      const expected = stack[stack.length - 1] === '{' ? '}' : ']';
+      if (c === expected) { stack.pop(); if (stack.length === 0) lastValid = i + 1; }
+    }
+  }
+
+  // 截断到最后一个合法闭合位置，补全剩余括号
+  let result = str.substring(0, lastValid || str.length);
+  // 再次去尾随逗号
+  result = result.replace(/,\s*([\]}])/g, '$1');
+  // 补全未闭合的括号
+  for (let i = stack.length - 1; i >= 0; i--) {
+    result += stack[i] === '{' ? '}' : ']';
+  }
+  return result;
 }
 
 function renderDashboard(d) {
