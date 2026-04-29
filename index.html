@@ -517,9 +517,9 @@
   <div class="container">
     <div class="header-inner">
       <div class="logo">
-        <div class="logo-icon">鈿?/div>
+        <div class="logo-icon">航</div>
         <div>
-          <div class="logo-text">鑸繍琛屾儏鏀堕泦鍣?/div>
+          <div class="logo-text">航运市场分析</div>
           <div class="logo-sub">Shipping Market Intelligence</div>
         </div>
       </div>
@@ -537,7 +537,7 @@
       <div style="margin-bottom:20px;">
         <div class="section-title">DeepSeek API Key</div>
         <div style="display:flex;gap:10px;align-items:center;">
-          <input type="password" id="apiKeyInput" placeholder="杈撳叆浣犵殑 DeepSeek API Key锛坰k-...锛?
+          <input type="password" id="apiKeyInput" placeholder="输入你的 DeepSeek API Key（sk-...）"
             style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;
             padding:10px 14px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace;
             outline:none;transition:border 0.2s;"
@@ -545,25 +545,25 @@
           <a href="https://platform.deepseek.com/api_keys" target="_blank"
             style="font-size:11px;color:var(--text-muted);white-space:nowrap;text-decoration:none;"
             onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">
-            鑾峰彇 Key 鈫?          </a>
+            获取 Key</a>
         </div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:6px;">
-          Key 淇濆瓨鍦ㄦ湰鍦版祻瑙堝櫒锛屼笅娆℃墦寮€鑷姩濉叆锛屼笉浼氫笂浼犺嚦浠讳綍鏈嶅姟鍣?          &nbsp;路&nbsp;
-          <span style="color:var(--up);cursor:pointer;text-decoration:underline;" onclick="clearKey()">娓呴櫎宸蹭繚瀛樼殑 Key</span>
+          Key 仅保存在本地浏览器，下次打开会自动填入，不会上传到其他服务。 &nbsp;|&nbsp;
+          <span style="color:var(--up);cursor:pointer;text-decoration:underline;" onclick="clearKey()">清除已保存的 Key</span>
         </div>
       </div>
 
-      <div class="section-title">涓婁紶琛屾儏鏂囦欢</div>
+      <div class="section-title">上传行情文件</div>
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-        <div class="upload-icon">馃搨</div>
-        <div class="upload-title">鎷栨嫿鎴栫偣鍑讳笂浼犳枃浠?/div>
-        <div class="upload-hint">鏀寔姣忔棩琛屾儏鎶ュ憡锛屽彲澶氭枃浠跺悓鏃朵笂浼?/div>
+        <div class="upload-icon">上传</div>
+        <div class="upload-title">拖拽或点击上传文件</div>
+        <div class="upload-hint">支持每日报告，可同时上传多个文件</div>
         <div class="upload-tags">
           <span class="tag">PDF</span>
           <span class="tag">XLSX</span>
           <span class="tag">TXT</span>
           <span class="tag">CSV</span>
-          <span class="tag">鏂囧瓧绮樿创</span>
+          <span class="tag">文本粘贴</span>
         </div>
       </div>
       <input type="file" id="fileInput" multiple accept=".pdf,.xlsx,.xls,.txt,.csv,.doc,.docx">
@@ -571,7 +571,7 @@
 
       <!-- Text paste area -->
       <div style="margin-top:12px;">
-        <textarea id="pasteArea" placeholder="涔熷彲鐩存帴绮樿创鏂囧瓧鍐呭锛堝競鍦烘姤鍛娿€佽鎯呮挱鎶ョ瓑锛?.."
+        <textarea id="pasteArea" placeholder="也可以直接粘贴文字内容（市场报告、行情播报等）..."
           style="width:100%;height:90px;background:var(--surface);border:1px solid var(--border);border-radius:8px;
           padding:12px;color:var(--text);font-size:12px;font-family:'Noto Sans SC',sans-serif;resize:vertical;
           outline:none;line-height:1.7;"></textarea>
@@ -579,16 +579,16 @@
 
       <!-- History Bulk Import -->
       <div style="margin-top:16px;">
-        <div class="section-title">鍘嗗彶鏁版嵁瀵煎叆锛堜竴娆℃€э級</div>
+        <div class="section-title">历史数据导入（一次性）</div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <div onclick="document.getElementById('histImportInput').click()"
             style="flex:1;min-width:200px;border:1px dashed var(--border);border-radius:8px;padding:12px 16px;
             cursor:pointer;background:var(--surface);transition:all 0.2s;display:flex;align-items:center;gap:10px;"
             onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)'">
-            <span style="font-size:20px;">馃梻锔?/span>
+            <span style="font-size:20px;">导入</span>
             <div>
-              <div style="font-size:12px;font-weight:500;">鎵归噺涓婁紶鍘嗗彶鏂囦欢</div>
-              <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">鏀寔澶氫釜 CSV / Excel锛岃嚜鍔ㄦ彁鍙栨瘡鏈圱C鎸囨暟瀛樺叆鍘嗗彶搴?/div>
+              <div style="font-size:12px;font-weight:500;">批量上传历史文件</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">支持多个 CSV / Excel，自动提取历史 TC 指数存入本地历史库</div>
             </div>
           </div>
           <input type="file" id="histImportInput" multiple accept=".csv,.xlsx,.xls" style="display:none"
@@ -598,8 +598,8 @@
       </div>
 
       <button class="parse-btn" id="parseBtn" onclick="parseAllData()">
-        <span>馃</span>
-        <span>AI 瑙ｆ瀽 & 鐢熸垚琛屾儏浠〃鐩?/span>
+        <span>开始</span>
+        <span>AI 解析并生成航运看板</span>
       </button>
       <div class="status-bar" id="statusBar"></div>
     </div>
@@ -610,7 +610,7 @@
       <!-- Date Info -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
         <div style="font-size:13px;color:var(--text-muted);">
-          琛屾儏鏃ユ湡锛?span id="reportDate" style="color:var(--text);font-weight:500;"></span>
+          行情日期：<span id="reportDate" style="color:var(--text);font-weight:500;"></span>
         </div>
         <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">
           鏁版嵁鏉ユ簮锛欱altic Exchange
@@ -618,25 +618,25 @@
       </div>
 
       <!-- BDI + Indices -->
-      <div class="section-title">娉㈢綏鐨勬捣鎸囨暟</div>
+      <div class="section-title">波罗的海指数</div>
       <div class="index-grid" id="indexGrid"></div>
       <!-- TC Rates -->
-      <div class="section-title">鏈熺鍧囦环</div>
+      <div class="section-title">TC 租金水平</div>
       <div class="tc-grid" id="tcGrid"></div>
 
       <!-- History Trend -->
-      <div class="section-title" style="margin-top:8px;">TC 鍘嗗彶璧板娍</div>
+      <div class="section-title" style="margin-top:8px;">TC 历史走势</div>
       <div class="full-card" id="historySection">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
           <div class="history-selector" style="margin-bottom:0;">
-            <button class="range-btn" onclick="setRange(30,this)">杩?0澶?/button>
-            <button class="range-btn" onclick="setRange(90,this)">杩?鏈?/button>
-            <button class="range-btn" onclick="setRange(180,this)">杩?鏈?/button>
-            <button class="range-btn active" onclick="setRange(365,this)">杩?骞?/button>
-            <button class="range-btn" onclick="setRange(1825,this)">杩?骞?/button>
-            <button class="range-btn" onclick="setRange(0,this)">鍏ㄩ儴</button>
+            <button class="range-btn" onclick="setRange(30,this)">近30天</button>
+            <button class="range-btn" onclick="setRange(90,this)">近3个月</button>
+            <button class="range-btn" onclick="setRange(180,this)">近6个月</button>
+            <button class="range-btn active" onclick="setRange(365,this)">近1年</button>
+            <button class="range-btn" onclick="setRange(1825,this)">近5年</button>
+            <button class="range-btn" onclick="setRange(0,this)">全部</button>
           </div>
-          <button class="clear-history-btn" onclick="clearHistory()">馃棏 娓呴櫎鍘嗗彶</button>
+          <button class="clear-history-btn" onclick="clearHistory()">清除历史</button>
         </div>
         <div style="position:relative;height:260px;"><canvas id="historyChart"></canvas></div>
         <div id="periodCmp" style="margin-top:20px;"></div>
@@ -644,37 +644,37 @@
       <div id="noHistoryNote" style="display:none;"></div>
 
       <!-- FFA Forward Curves -->
-      <div class="section-title">FFA 杩滄湡鏇茬嚎 <span style="font-size:10px;font-weight:400;color:var(--text-muted);">锛堝競鍦哄鏈潵绉熼噾鐨勯鏈燂級</span></div>
+      <div class="section-title">FFA 远期市场 <span style="font-size:10px;font-weight:400;color:var(--text-muted);">（市场对未来租金的预期）</span></div>
       <div class="full-card" id="ffaSection" style="display:none;">
         <div class="ffa-overview" id="ffaOverview"></div>
         <div class="ffa-tabs" id="ffaTabs">
-          <div class="ffa-tab active" onclick="switchFFA('CAPE',this)">娴峰铂鍨?CAPE</div>
-          <div class="ffa-tab" onclick="switchFFA('PMAX',this)">宸存嬁椹瀷 PMAX</div>
-          <div class="ffa-tab" onclick="switchFFA('SMAX',this)">瓒呯伒渚垮瀷 SMAX</div>
-          <div class="ffa-tab" onclick="switchFFA('HANDY',this)">鐏典究鍨?HANDY</div>
+          <div class="ffa-tab active" onclick="switchFFA('CAPE',this)">海岬型 CAPE</div>
+          <div class="ffa-tab" onclick="switchFFA('PMAX',this)">巴拿马型 PMAX</div>
+          <div class="ffa-tab" onclick="switchFFA('SMAX',this)">超灵便型 SMAX</div>
+          <div class="ffa-tab" onclick="switchFFA('HANDY',this)">灵便型 HANDY</div>
         </div>
         <div class="ffa-details" id="ffaDetails"></div>
         <div id="ffaTable"></div>
       </div>
       <div id="noFfaNote" style="font-size:12px;color:var(--text-muted);margin-bottom:24px;padding:12px 16px;
         background:var(--surface);border:1px dashed var(--border);border-radius:8px;display:none;">
-        FFA 鏁版嵁瑙ｆ瀽涓?..
+        FFA 数据解析中...
       </div>
 
       <!-- Fixture Highlights -->
-      <div class="section-title">浠婃棩鎴愪氦浜偣</div>
+      <div class="section-title">今日成交亮点</div>
       <div class="full-card">
         <table class="fixtures-table">
           <thead>
             <tr>
               <th>绫诲瀷</th>
               <th>鑸瑰悕</th>
-              <th>杞介噸鍚?/ 寤洪€?/th>
-              <th>浜よ埞娓?/th>
-              <th>鑸嚎 / 鐩殑鍦?/th>
-              <th>璐х</th>
-              <th>绉熼噾/杩愯垂</th>
-              <th>绉熷</th>
+              <th>载重吨 / 建造</th>
+              <th>交船地</th>
+              <th>航线 / 目的地</th>
+              <th>货种</th>
+              <th>租金/运费</th>
+              <th>租家</th>
             </tr>
           </thead>
           <tbody id="fixtureBody"></tbody>
@@ -682,13 +682,13 @@
       </div>
 
       <!-- Voyage Rates -->
-      <div class="section-title">鑸杩愯垂</div>
+      <div class="section-title">航次运费</div>
       <div class="full-card">
         <div class="voyage-list" id="voyageList"></div>
       </div>
 
       <!-- Sector Analysis -->
-      <div class="section-title">鑸瑰瀷甯傚満鍒嗘瀽</div>
+      <div class="section-title">船型市场分析</div>
       <div class="analysis-grid" id="analysisGrid"></div>
 
       <!-- Important News -->
@@ -778,7 +778,7 @@ function renderFileItem(f) {
   item.innerHTML = `<span class="file-icon">${icon}</span>
     <span class="file-name">${f.name}</span>
     <span class="file-size">${size}</span>
-    <span class="file-status" style="color:var(--text-muted);">寰呰В鏋?/span>`;
+    <span class="file-status" style="color:var(--text-muted);">等待解析</span>`;
   document.getElementById('fileList').appendChild(item);
 }
 
@@ -824,8 +824,8 @@ function setStatus(type, msg) {
   const bar = document.getElementById('statusBar');
   bar.className = 'status-bar ' + type;
   if (type === 'loading') bar.innerHTML = `<div class="spinner"></div><span>${msg}</span>`;
-  else if (type === 'success') bar.innerHTML = `<span>鉁?/span><span>${msg}</span>`;
-  else bar.innerHTML = `<span>鉂?/span><span>${msg}</span>`;
+  else if (type === 'success') bar.innerHTML = `<span>OK</span><span>${msg}</span>`;
+  else bar.innerHTML = `<span>ERR</span><span>${msg}</span>`;
 }
 
 async function parseAllData() {
@@ -853,7 +853,7 @@ async function parseAllData() {
       allText += `[鏂囦欢: ${f.name}]\n${text}\n\n`;
     }
     const item = document.getElementById('file_'+f.name.replace(/[^a-z0-9]/gi,'_'));
-    if (item) item.querySelector('.file-status').textContent = '鉁?宸茶鍙?;
+    if (item) item.querySelector('.file-status').textContent = '已读取';
   }
 
   setStatus('loading', '姝ｅ湪璋冪敤 AI 瑙ｆ瀽琛屾儏鏁版嵁...');
@@ -1296,7 +1296,7 @@ function saveHistoryRecord(date, rates) {
   localStorage.setItem('shipping_history', JSON.stringify(hist));
 }
 function clearHistory() {
-  if (confirm('纭畾娓呴櫎鎵€鏈夊巻鍙茶蛋鍔挎暟鎹悧锛?)) {
+  if (confirm('确定清除所有历史走势数据吗？')) {
     localStorage.removeItem('shipping_history');
     document.getElementById('historySection').style.display = 'none';
     document.getElementById('noHistoryNote').style.display = '';
@@ -1605,7 +1605,7 @@ window.addEventListener('load', () => {
   if (!files || files.length === 0) return;
   const statusEl = document.getElementById('histImportStatus');
   statusEl.style.color = 'var(--accent)';
-  statusEl.textContent = '鈴?瀵煎叆涓?..';
+  statusEl.textContent = '导入中...';
 
   let imported = 0, skipped = 0;
 
@@ -1626,8 +1626,10 @@ window.addEventListener('load', () => {
   renderHistoryChart();
   const hist = loadHistory();
   statusEl.style.color = 'var(--up)';
-  statusEl.textContent = `鉁?瀵煎叆 ${imported} 鏉★紝鍘嗗彶搴撳叡 ${hist.length} 鏉;
-  setTimeout(() => statusEl.textContent = `鍘嗗彶搴擄細${hist.length} 鏉, 4000);
+  statusEl.textContent = `已导入 ${imported} 条，历史库共 ${hist.length} 条`;
+  setTimeout(() => {
+    statusEl.textContent = `历史库：${hist.length} 条`;
+  }, 4000);
 }
 
 function readFileText(file) {
@@ -1785,7 +1787,7 @@ function toggleRaw() {
   const raw = document.getElementById('rawContent');
   const icon = document.getElementById('rawToggleIcon');
   raw.classList.toggle('open');
-  icon.textContent = raw.classList.contains('open') ? '[鏀惰捣]' : '[灞曞紑]';
+  icon.textContent = raw.classList.contains('open') ? '[收起]' : '[展开]';
 }
 </script>
 </body>
